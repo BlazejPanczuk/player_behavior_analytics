@@ -7,7 +7,7 @@ The application combines classic data analysis techniques with interactive visua
 
 ---
 
-## 🎓 Academic Context
+## Academic Context
 
 This project was developed as an **engineering thesis** in the field of **Computer Science**.  
 Its main goal is to demonstrate the design and implementation of a desktop analytical system that supports the exploration of player activity, preferences, and behavior patterns.
