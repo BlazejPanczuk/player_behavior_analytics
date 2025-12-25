@@ -14,7 +14,7 @@ Its main goal is to demonstrate the design and implementation of a desktop analy
 
 ---
 
-## 🛠 Technologies Used
+## Technologies Used
 
 - **Python 3**
 - **Tkinter** – graphical user interface
