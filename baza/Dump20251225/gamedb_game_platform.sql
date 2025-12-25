@@ -1,0 +1,56 @@
+-- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
+--
+-- Host: localhost    Database: gamedb
+-- ------------------------------------------------------
+-- Server version	8.0.41
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `game_platform`
+--
+
+DROP TABLE IF EXISTS `game_platform`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `game_platform` (
+  `id_game_platform` int NOT NULL AUTO_INCREMENT,
+  `id_game` int DEFAULT NULL,
+  `id_platform` int DEFAULT NULL,
+  PRIMARY KEY (`id_game_platform`),
+  KEY `id_game` (`id_game`),
+  KEY `id_platform` (`id_platform`),
+  CONSTRAINT `game_platform_ibfk_1` FOREIGN KEY (`id_game`) REFERENCES `game` (`id_game`),
+  CONSTRAINT `game_platform_ibfk_2` FOREIGN KEY (`id_platform`) REFERENCES `platform` (`id_platform`)
+) ENGINE=InnoDB AUTO_INCREMENT=192 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `game_platform`
+--
+
+LOCK TABLES `game_platform` WRITE;
+/*!40000 ALTER TABLE `game_platform` DISABLE KEYS */;
+INSERT INTO `game_platform` VALUES (1,1,1),(2,1,2),(3,1,3),(4,1,5),(5,1,7),(6,2,1),(7,2,6),(8,2,8),(9,3,1),(10,3,2),(11,3,3),(12,4,1),(13,4,5),(14,4,7),(15,5,1),(16,5,3),(17,5,6),(18,6,1),(19,6,2),(20,7,1),(21,7,2),(22,8,1),(23,8,5),(24,8,6),(25,8,7),(26,8,8),(27,8,9),(28,9,1),(29,9,5),(30,9,6),(31,9,7),(32,9,8),(33,10,1),(34,10,3),(35,11,1),(36,11,5),(37,11,6),(38,11,7),(39,11,8),(40,12,1),(41,12,5),(42,12,6),(43,12,7),(44,12,8),(45,13,1),(46,14,1),(47,15,1),(48,15,2),(49,15,3),(50,15,5),(51,15,7),(52,15,9),(53,16,1),(54,16,5),(55,16,9),(56,17,1),(57,17,5),(58,17,6),(59,17,7),(60,17,8),(61,17,9),(62,18,1),(63,18,2),(64,18,3),(65,19,1),(66,19,5),(67,19,7),(68,20,1),(69,20,2),(70,20,3),(71,21,1),(72,22,1),(73,22,5),(74,22,7),(75,23,1),(76,23,3),(77,24,1),(78,24,2),(79,24,3),(80,24,5),(81,24,6),(82,24,7),(83,24,8),(84,24,9),(85,25,1),(86,25,5),(87,25,6),(88,25,7),(89,25,8),(90,25,9),(91,26,1),(92,26,5),(93,26,6),(94,26,7),(95,26,8),(96,26,9),(97,27,1),(98,27,2),(99,27,3),(100,201,1),(101,201,2),(102,201,3),(103,201,9),(104,201,5),(105,201,7),(106,202,1),(107,202,3),(108,202,5),(109,202,7),(110,202,9),(111,203,1),(112,203,2),(113,203,3),(114,203,9),(115,203,5),(116,203,6),(117,203,7),(118,203,8),(119,204,1),(120,204,2),(121,204,3),(122,204,9),(123,204,5),(124,204,7),(125,204,10),(126,205,1),(127,205,5),(128,205,7),(129,206,1),(130,206,2),(131,206,3),(132,206,5),(133,206,7),(134,206,9),(135,206,10),(136,207,1),(137,207,2),(138,207,3),(139,208,1),(140,208,6),(141,208,8),(142,209,1),(143,209,3),(144,209,5),(145,209,6),(146,209,7),(147,209,8),(148,210,1),(149,210,5),(150,210,6),(151,210,7),(152,210,8),(153,211,1),(154,211,2),(155,211,3),(156,211,9),(157,211,5),(158,211,7),(159,212,1),(160,212,2),(161,212,3),(162,212,9),(163,213,1),(164,213,5),(165,213,7),(166,214,1),(167,215,1),(168,215,5),(169,215,6),(170,215,7),(171,215,8),(172,216,1),(173,216,2),(174,216,3),(175,216,5),(176,216,7),(177,216,9),(178,217,1),(179,217,2),(180,217,3),(181,217,5),(182,217,7),(183,217,9),(184,218,1),(185,219,1),(186,219,3),(187,219,2),(188,220,1),(189,220,2),(190,220,3),(191,221,1);
+/*!40000 ALTER TABLE `game_platform` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2025-12-25 20:48:44
