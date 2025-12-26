@@ -11,14 +11,12 @@ from database_connection import (
     fetch_user_game_rating,
     upsert_rating,
 )
-# --- Obrazy (opcjonalnie) ---
 try:
     from PIL import Image, ImageTk, UnidentifiedImageError
     HAS_PIL = True
 except Exception:
     HAS_PIL = False
 
-# Próba rejestracji pluginów AVIF/HEIF (jeśli są zainstalowane)
 if HAS_PIL:
     try:
         import pillow_heif
@@ -57,15 +55,9 @@ def fetch_all_genres() -> list[str]:
         return [r["name"] for r in rows if r and r.get("name")]
     
 def fetch_recommended_games_with_reason(login: str, limit: int = 3, randomize: bool = False) -> list[dict]:
-    """
-    Zwraca listę gier (max `limit`) nieposiadanych przez usera `login`,
-    posortowanych wg dopasowania gatunków do biblioteki użytkownika.
-    Jeśli `randomize=True`, w obrębie dobrze dopasowanych wyników dodaj losowanie,
-    aby kolejne odświeżenia mogły pokazać inne 3 gry.
-    """
+   
     order_clause = "ORDER BY s.score DESC, s.release_date DESC, s.name ASC"
     if randomize:
-        # priorytet: score DESC, a w ramach podobnej jakości permutuj losowo
         order_clause = "ORDER BY s.score DESC, RAND()"
 
     sql = f"""
@@ -133,14 +125,10 @@ def fetch_recommended_games_with_reason(login: str, limit: int = 3, randomize: b
 
 
 def build_reco_reason(row: dict) -> str:
-    """
-    Buduje zwięzłe 'dlaczego polecone'.
-    Priorytet: dopasowane gatunki + prosty tekst.
-    """
+  
     mg = (row.get("matched_genres") or "").strip()
     if mg:
         return f"Podobne do Twoich gatunków: {mg}"
-    # fallback, gdy user nie ma biblioteki lub brak przecieć
     return "Pasuje do popularnych gatunków i świeższych premier"
 
 
@@ -151,11 +139,8 @@ def get_user_balance(login: str) -> float:
         return float(row["balance"] if row else 0.0)
 
 def top_up_balance(login: str, amount_pln: float) -> float:
-    """
-    Dodaje kwotę do salda (NULL traktowany jak 0). Zgłasza błąd, jeśli użytkownik nie istnieje.
-    """
+   
     with with_db_connection(dictionary=True) as (conn, cursor):
-        # Sprawdź istnienie i zablokuj wiersz na czas operacji
         cursor.execute("SELECT COALESCE(balance, 0) AS balance FROM user WHERE login = %s FOR UPDATE", (login,))
         row = cursor.fetchone()
         if not row:
@@ -170,7 +155,6 @@ def top_up_balance(login: str, amount_pln: float) -> float:
             (amount_pln, login),
         )
         if cursor.rowcount == 0:
-            # Gdyby mimo wszystko nic nie zaktualizowało
             raise RuntimeError("Nie zaktualizowano żadnego wiersza (rowcount = 0).")
 
         conn.commit()
@@ -181,14 +165,10 @@ def top_up_balance(login: str, amount_pln: float) -> float:
 
 
 def fetch_user_profile(login: str) -> dict:
-    """
-    Pobiera *wszystkie* kolumny z tabeli user dla danego loginu i zwraca jako dict.
-    Filtruje typowe wrażliwe pola.
-    """
+  
     with with_db_connection(dictionary=True) as (conn, cursor):
         cursor.execute("SELECT * FROM user WHERE login = %s", (login,))
         row = cursor.fetchone() or {}
-    # odfiltruj potencjalnie wrażliwe
     sensitive_keys = {"password", "pass", "pwd", "token", "salt", "secret", "api_key", "hash"}
     clean = {}
     for k, v in row.items():
@@ -467,7 +447,6 @@ def _compute_columns(container_width: int) -> int:
 
 def render_grid(container: tk.Frame, games: list[dict]):
     def _add_rating_label(card: tk.Frame, row: dict, gid: int):
-        """Pokazuje 'Ocena: x/10 (n)' (lub 'Brak ocen') pod przyciskiem."""
         try:
             avg = row.get("avg_rating")
             cnt = int(row.get("rating_count") or 0)
@@ -480,12 +459,10 @@ def render_grid(container: tk.Frame, games: list[dict]):
         tk.Label(card, text=text, fg="#A0AEC0", bg=card["bg"], font=("Consolas", 9)).pack(pady=(6, 0))
 
     def _add_rate_button_if_library(card: tk.Frame, container: tk.Frame, login: str, gid: int, title: str):
-        """Jeśli to widok Biblioteki (brak akcji kupna), pokaż moją ocenę i przycisk 'Oceń'."""
-        # Jeśli jest akcja zakupu, to jesteśmy w SKLEPIE -> tutaj nie robimy przycisku "Oceń"
+       
         if callable(getattr(container, "purchase_game", None)):
             return
 
-        # Moja ocena (mały napis)
         try:
             my = fetch_user_game_rating(login, gid) if login and gid else None
         except Exception:
@@ -670,9 +647,7 @@ def build_shop_view(parent: tk.Frame, login: str, on_balance_change, on_purchase
     owned_ids = fetch_owned_game_ids(login)     # posiadane
     dbg.config(text=f"Wczytano gier: {len(games_all)} | Posiadane: {len(owned_ids)}")
 
-    # =========================
-    # FILTRY NAD KAFELKAMI
-    # =========================
+   
     filters = tk.Frame(frame, bg=COLOR_BG, highlightbackground="#00FFFF", highlightthickness=1)
     filters.pack(fill=tk.X, padx=8, pady=(8, 4))
 
@@ -724,9 +699,7 @@ def build_shop_view(parent: tk.Frame, login: str, on_balance_change, on_purchase
     btns = tk.Frame(filters, bg=COLOR_BG)
     btns.pack(fill=tk.X, padx=8, pady=(0, 10))
 
-    # =========================
-    # POLECANE (z odświeżaniem)
-    # =========================
+   
     reco_wrap = tk.Frame(frame, bg=COLOR_BG)
     reco_wrap.pack(fill=tk.X, padx=8, pady=(6, 10))
 
@@ -735,13 +708,11 @@ def build_shop_view(parent: tk.Frame, login: str, on_balance_change, on_purchase
     tk.Label(title_row, text="Polecane dla Ciebie", bg=COLOR_BG, fg="#00FFFF",
              font=("Consolas", 14, "bold")).pack(side=tk.LEFT)
 
-    # Kontener na karty i separator (stałe)
     reco_row = tk.Frame(reco_wrap, bg=COLOR_BG)
     reco_row.pack(fill=tk.X, pady=(8, 4))
     sep = tk.Frame(reco_wrap, bg="#00FFFF", height=1)
     sep.pack(fill=tk.X, pady=(6, 0))
 
-    # Pula już pokazanych gier (rotacja bez powtórek aż do wyczerpania)
     already_shown = set()
 
     def render_recommendations(randomize: bool = False):
@@ -840,9 +811,7 @@ def build_shop_view(parent: tk.Frame, login: str, on_balance_change, on_purchase
     )
     refresh_btn.pack(side=tk.LEFT, padx=10)
 
-    # =========================
-    # SIATKA SKLEPU + FILTROWANIE
-    # =========================
+   
     grid = ScrollGrid(frame)
     grid.pack(fill="both", expand=True)
     grid.inner.login = login
@@ -958,23 +927,18 @@ def build_library_view(parent: tk.Frame, login: str) -> tk.Frame:
     grid = ScrollGrid(frame)
     grid.pack(fill="both", expand=True)
 
-    # --- funkcja odświeżająca zawartość biblioteki ---
     def _refresh():
         
         games = fetch_library_for_user(login)
         info.config(text=f"Łącznie pozycji: {len(games)}")
 
-        # kontekst dla render_grid – potrzebny do ocen
         grid.inner.login = login
-        # callback, który przekażemy do open_rating_dialog (przez _add_rate_button_if_library)
         grid.inner.on_rating_saved = frame.refresh
 
         render_grid(grid.inner, games)
 
-    # expose do późniejszych wywołań
     frame.refresh = _refresh
 
-    # nasłuch na globalne zdarzenie (wysyłane w save_rating)
     frame.bind("<<RatingSaved>>", lambda e: frame.refresh())
 
     # pierwszy render
@@ -1027,7 +991,6 @@ def open_rating_dialog(parent, login: str, game_id: int, game_name: str, on_save
             if callable(on_saved):
                 on_saved()
 
-            # wyślij globalny sygnał, aby sklep (i inne widoki) też odświeżyły się
             try:
                 root = parent.winfo_toplevel()   # główne okno aplikacji
                 root.event_generate("<<RatingSaved>>", when="tail")

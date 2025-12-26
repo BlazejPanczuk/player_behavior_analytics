@@ -1,6 +1,5 @@
 import mysql.connector
 from contextlib import contextmanager
-# === RATINGS API ===
 from typing import Optional, Tuple
 @contextmanager
 def with_db_connection(dictionary=False):
@@ -30,7 +29,6 @@ def upsert_rating(login: str, game_id: int, rating: int) -> None:
             raise ValueError("Nie znaleziono użytkownika")
         uid = int(row["id_user"])
 
-        # sprawdź, czy użytkownik ma tę grę w bibliotece
         cur.execute("""
             SELECT 1
             FROM library
@@ -40,7 +38,6 @@ def upsert_rating(login: str, game_id: int, rating: int) -> None:
         if cur.fetchone() is None:
             raise PermissionError("Użytkownik nie posiada tej gry – nie może jej oceniać")
 
-        # wstaw/aktualizuj ocenę
         cur.execute("""
             INSERT INTO rating (id_user, id_game, rating)
             VALUES (%s, %s, %s)

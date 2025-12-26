@@ -1,4 +1,3 @@
-# chart_ai_bridge.py
 import tkinter as tk
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
@@ -7,7 +6,6 @@ import pandas as pd
 
 from ai_local_integration import interpret_with_local_ai
 
-# ---------- Logger (odporny na Frame/Label) ----------
 def _resolve_text_widget(widget):
     if isinstance(widget, tk.Text):
         return widget
@@ -102,7 +100,6 @@ Nie generuj kodu. Pisz po polsku, zwięźle, w punktach.
         prompt += f"\nUwaga użytkownika: {user_hint}\n"
     return prompt
 
-# ---------- Uruchomienie analizy AI (wątek, log do widgetu) ----------
 def analyze_latest_chart_async(info_widget: tk.Text | tk.Frame, user_hint: str = "", model: str = "mistral") -> None:
     snap = _latest_snapshot
     if snap is None:
@@ -117,7 +114,6 @@ def analyze_latest_chart_async(info_widget: tk.Text | tk.Frame, user_hint: str =
             response = interpret_with_local_ai(prompt, model=model)
         except Exception as e:
             response = f"[Błąd AI]: {e}"
-        # wstawiamy odpowiedź zamiast dopisywać – będzie czytelniej
         target = _resolve_text_widget(info_widget)
         def _replace():
             try:

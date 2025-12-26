@@ -1,5 +1,3 @@
-# ai_analysis_module.py – jeden plik do obsługi AI checkboxów i analizy tekstowej
-# Wersja: "nie-dusimy-LLM" :)
 
 import pandas as pd
 import numpy as np
@@ -9,7 +7,6 @@ from ai_local_integration import interpret_with_local_ai
 import threading
 from textwrap import shorten
 
-# ====== STAŁE BEZPIECZEŃSTWA ======
 MAX_PROMPT_CHARS = 120_000         # twardy limit znaków wysyłanych do LLM
 MAX_SAMPLE_ROWS = 800              # łączna liczba wierszy próbek przekazywana do LLM
 TOP_N_CATS = 10                    # top-N wartości dla kolumn kategorycznych
@@ -40,9 +37,6 @@ COLUMN_DESCRIPTIONS = {
     "copies_sold": "sprzedane kopie (int) — skala komercyjna (często brak pełnych danych)"
 }
 
-# =========================
-# Budowanie streszczenia danych (zamiast surowej tabeli)
-# =========================
 def summarize_dataframe(df: pd.DataFrame) -> str:
     md = []
 
@@ -60,7 +54,6 @@ def summarize_dataframe(df: pd.DataFrame) -> str:
         desc = df[num_cols].describe(percentiles=[.05,.25,.5,.75,.95]).T
         md.append("\n**Statystyki numeryczne:**\n" + desc.to_markdown())
 
-        # Proste wykrywanie outlierów (IQR)
         out_md = []
         for c in num_cols:
             s = df[c].dropna()
@@ -75,17 +68,15 @@ def summarize_dataframe(df: pd.DataFrame) -> str:
         if out_md:
             md.append("\n**Potencjalne obserwacje odstające (IQR):**\n" + "\n".join(out_md))
 
-    # Kategoryczne / tekstowe
     cat_cols = df.select_dtypes(include=["object", "category", "bool"]).columns.tolist()
     if cat_cols:
         cat_md = []
-        for c in cat_cols[:30]:  # twardy limit tabel w raporcie
+        for c in cat_cols[:30]:
             vc = df[c].astype("string").fillna("<NA>").value_counts(dropna=False).head(TOP_N_CATS)
             uniq = df[c].nunique(dropna=False)
             cat_md.append(f"\n**{c}** (unikalnych: {uniq}, top {TOP_N_CATS}):\n" + vc.to_markdown())
         md.append("\n**Rozkłady kategoryczne:**\n" + "\n".join(cat_md))
 
-    # Daty/czas
     dt_cols = [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])]
     if dt_cols:
         dt_md = []
@@ -102,14 +93,11 @@ def summarize_dataframe(df: pd.DataFrame) -> str:
 
     return "\n\n".join(md)
 
-# =========================
-# Zbudowanie próbek (stratyfikowanych), żeby pokazać przykłady
-# =========================
+
 def build_samples(df: pd.DataFrame) -> pd.DataFrame:
     rows_left = MAX_SAMPLE_ROWS
     samples = []
 
-    # Priorytet: jeżeli mamy kolumny, które często pytamy
     strat_cols = [c for c in ["genres", "creator"] if c in df.columns]
     used = set()
 
@@ -127,7 +115,6 @@ def build_samples(df: pd.DataFrame) -> pd.DataFrame:
         if rows_left <= 0:
             break
 
-    # Dalsze próbkowanie: numeryczne kwantylami
     if rows_left > 0:
         num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         if num_cols:
@@ -144,7 +131,6 @@ def build_samples(df: pd.DataFrame) -> pd.DataFrame:
                 if rows_left <= 0:
                     break
 
-    # Fallback: losowa próbka
     if rows_left > 0 and len(df) > 0:
         take = min(rows_left, len(df))
         samples.append(df.sample(take, random_state=42))
@@ -154,9 +140,7 @@ def build_samples(df: pd.DataFrame) -> pd.DataFrame:
         return out
     return df.head(min(MAX_SAMPLE_ROWS, len(df)))
 
-# =========================
-# Budowanie promptu AI (wersja streszczona + próbki)
-# =========================
+
 def build_ai_prompt(df, selected_categories, user_prompt="", sample_df=None, summary_md=None):
     columns = df.columns.tolist()
 
@@ -266,19 +250,16 @@ def build_ai_prompt(df, selected_categories, user_prompt="", sample_df=None, sum
         prompt = shorten(prompt, width=MAX_PROMPT_CHARS, placeholder="\n\n...[ucięto dla limitu]")
 
     return prompt
-# =========================
-# Pobieranie danych z bazy
-# =========================
+
 def fetch_data_for_categories(selected):
     query_parts = []
     joins = set()
     conditions = []
-    group_by_cols = []  # dla kolumn nieagregowanych
+    group_by_cols = [] 
 
     if not selected:
         return pd.DataFrame()
 
-    # ===== LIBRARY =====
     if "Czas gry" in selected:
         query_parts.append("l.play_time")
         group_by_cols.append("l.play_time")
@@ -342,7 +323,6 @@ def fetch_data_for_categories(selected):
             "gg.id_game = g.id_game",
             "gg.id_genre = ge.id_genre"
         ])
-        # genres jest agregatem → nie trafia do group_by_cols
 
     # ===== PLATFORMY =====
     if "Platformy" in selected:
@@ -370,7 +350,6 @@ def fetch_data_for_categories(selected):
                 f"gl.id_language = {lname.split('.')[0]}.id_language"
             ])
 
-    # ===== Build SQL =====
     base = "FROM " + ", ".join(sorted(joins))
     where = "WHERE " + " AND ".join(set(conditions)) if conditions else ""
     group_by = f"GROUP BY {', '.join(sorted(set(group_by_cols)))}" if group_by_cols else ""
@@ -388,13 +367,11 @@ def fetch_data_for_categories(selected):
             rows = cursor.fetchall()
             df = pd.DataFrame(rows)
 
-            # Rozbicie 'genres' na wiersze
             if 'genres' in df.columns:
                 df['genres'] = df['genres'].str.split(',')
                 df = df.explode('genres')
                 df['genres'] = df['genres'].str.strip()
 
-            # Konwersja dat
             for col in df.columns:
                 if "date" in col.lower():
                     try:
@@ -408,12 +385,9 @@ def fetch_data_for_categories(selected):
         print(f"[Błąd bazy danych]: {e}")
         return pd.DataFrame()
 
-# =========================
-# Map-Reduce dla bardzo dużych ramek (opcjonalne)
-# =========================
+
 def map_reduce_analysis(df: pd.DataFrame, selected, user_prompt: str) -> str:
-    # Dzielimy dane na kawałki, każdy chunk -> streszczenie + krótki wniosek,
-    # a na końcu prosimy AI o scalenie wniosków.
+  
     parts = []
     for start in range(0, len(df), CHUNK_ROWS):
         part = df.iloc[start:start+CHUNK_ROWS].copy()
@@ -423,7 +397,6 @@ def map_reduce_analysis(df: pd.DataFrame, selected, user_prompt: str) -> str:
         resp = interpret_with_local_ai(prompt, model="mistral")
         parts.append(resp)
 
-    # prompt do scalenia
     merge_prompt = f"""Masz częściowe analizy AI (poniżej). 
 Scal je w jeden spójny raport, eliminując powtórki i podkreślając tezy wspólne oraz wyjątki.
 
@@ -438,9 +411,7 @@ Zwróć: Sekcje (Wnioski kluczowe, Zależności, Anomalie, Rekomendacje). Zwię�
 
     return interpret_with_local_ai(merge_prompt, model="mistral")
 
-# =========================
-# Główna funkcja wywoływana z analiza.py
-# =========================
+
 def interpretuj_ai_z_kategorii(checkboxes, user_prompt, frame_data, frame_ai):
     selected = [k for k, v in checkboxes.items() if v.get()]
     if not selected:

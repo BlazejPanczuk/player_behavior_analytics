@@ -1,8 +1,6 @@
-# === Standard library ===
 import os
 import sys
 import subprocess
-# === Third-party ===
 import requests
 import numpy as np
 import pandas as pd
@@ -11,10 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-# === Tkinter ===
 import tkinter as tk
 from tkinter import ttk
-# === Project styles & utils ===
 from analysis_ui_styles import (
     COLOR_LEFT, COLOR_RIGHT, COLOR_BOTTOM, BORDER_COLOR, BORDER_WIDTH,
     FONT, HEADER_FONT, LISTBOX_BG, LISTBOX_FG, LISTBOX_SELECT_BG, LISTBOX_SELECT_FG,
@@ -24,31 +20,24 @@ from itertools import cycle
 from database_connection import with_db_connection
 from ai_local_integration import interpret_with_local_ai
 from ai_data_analysis import interpretuj_ai_z_kategorii
-# === Database (shared utility) ===
 from database_connection import with_db_connection
-# === Styles (import helpers) ===
 from analysis_ui_styles import stylized_button
-#=== Bridge to Ai analize ===
 from chart_ai_bridge import (ChartSnapshot,register_chart_snapshot,analyze_latest_chart_async, append_log, )
-# === Logging ===
 def _post_to_log(widget, message: str) -> None:
     if not widget:
         return
 
-    # Jeśli to Frame, spróbuj znaleźć w nim Text
     if isinstance(widget, tk.Frame):
         for child in widget.winfo_children():
             if isinstance(child, tk.Text):
                 widget = child
                 break
         else:
-            # brak Text → stwórz nowy
             txt = tk.Text(widget, wrap="word", bg="#121222", fg="white",
                           font=("Consolas", 10), borderwidth=0)
             txt.pack(fill="both", expand=True)
             widget = txt
 
-    # Jeśli to już Text → wpisz log
     if isinstance(widget, tk.Text):
         try:
             widget.after(0, lambda: (
@@ -58,13 +47,11 @@ def _post_to_log(widget, message: str) -> None:
         except Exception:
             pass
     else:
-        # fallback: spróbuj ustawić text= (np. Label)
         try:
             prev = widget.cget("text")
             widget.config(text=(prev + ("\n" if prev else "") + message))
         except Exception:
             pass
-# === Queries: basic lists ==
 def get_game_titles() -> list[str]:
     try:
         with with_db_connection() as (conn, cursor):
@@ -135,7 +122,6 @@ def get_user_details(login: str) -> dict:
     except Exception as e:
         return {"Błąd": str(e)}
 
-# === Queries: game info ===
 def get_game_info(game_title: str) -> dict:
     try:
         with with_db_connection(dictionary=True) as (conn, cursor):
@@ -178,7 +164,6 @@ def get_game_info(game_title: str) -> dict:
     except Exception as e:
         return {"Błąd": str(e)}
 
-# === SteamCharts: fetch current / 24h peak / all-time peak ===
 def fetch_steamcharts_data(appid: int, timeout: float = 10.0):
     import re
     from bs4 import BeautifulSoup
@@ -206,7 +191,6 @@ def fetch_steamcharts_data(appid: int, timeout: float = 10.0):
 
         current = peak24 = alltime = None
 
-        # mapowanie po etykietach (bardziej odporne niż zakładanie kolejności)
         for box in stats:
             num = box.find("span", class_="num")
             label = box.get_text(" ", strip=True).lower()
@@ -219,7 +203,6 @@ def fetch_steamcharts_data(appid: int, timeout: float = 10.0):
             elif "all-time peak" in label or "rekord wszechczasów" in label:
                 alltime = value
 
-        # fallback: kolejność 0/1/2 jak w klasycznym layoutcie
         if any(v is None for v in (current, peak24, alltime)) and len(stats) >= 3:
             try:
                 current = current or parse_int(stats[0].find("span", class_="num").get_text(strip=True))
@@ -232,7 +215,6 @@ def fetch_steamcharts_data(appid: int, timeout: float = 10.0):
 
     except Exception:
         return None, None, None
-# === DB update: SteamCharts stats ===
 def update_steamcharts_data(
     appid: int,
     current: int | None,
@@ -255,7 +237,6 @@ def update_steamcharts_data(
             return cursor.rowcount > 0
     except Exception:
         return False
-# === UI helpers ===
 def _set_info_text(widget, text: str) -> None:
     if not widget:
         return
@@ -263,7 +244,6 @@ def _set_info_text(widget, text: str) -> None:
         widget.after(0, lambda: widget.config(text=text))
     except Exception:
         pass
-# === SteamCharts: refresh all games ===
 def refresh_all_games(info_target=None, log_target=None) -> int:
     updated_count = 0
     try:
@@ -529,7 +509,6 @@ def generate_achievement_pie_chart(parent_frame, log_target=None):
                 _log(f"[Pie] Błąd SQL: {e}")
                 return
 
-            # grupowanie: ilu graczy ma daną liczbę osiągnięć
             grouped = {}
             for r in data:
                 count = r['achievements'] or 0
@@ -545,7 +524,6 @@ def generate_achievement_pie_chart(parent_frame, log_target=None):
             labels = [f"{v:.2f}% ({a}/{max_ach})" for a, v in zip(achieved, percentages)]
             colors = plt.cm.viridis([i / max(1, len(counts)) for i in range(len(counts))])
 
-            # --- RYSOWANIE ---
             fig, ax = plt.subplots(figsize=(6, 6))
             fig.patch.set_facecolor("#121222")
             ax.set_facecolor("#1A0033")
@@ -554,7 +532,6 @@ def generate_achievement_pie_chart(parent_frame, log_target=None):
                 def pct(pct):
                     total = sum(sizes) if sizes else 1
                     count = int(round(pct / 100.0 * total))
-                    # używamy kopii raw_labels przy wywołaniu
                     return f"{count} graczy\n{raw_labels.pop(0)}"
                 return pct
 
@@ -570,7 +547,6 @@ def generate_achievement_pie_chart(parent_frame, log_target=None):
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # --- SNAPSHOT: dane dokładnie jak na wykresie ---
             df_pie = pd.DataFrame({
                 "Label": labels,
                 "PlayersCount": counts,
@@ -594,7 +570,6 @@ def generate_achievement_pie_chart(parent_frame, log_target=None):
 
         listbox.bind('<<ListboxSelect>>', on_select_change)
 
-        # opcjonalnie: auto-rysowanie pierwszej gry
         if game_titles:
             listbox.selection_set(0)
             draw_chart(game_titles[0])
@@ -827,7 +802,6 @@ def generate_real_currency_items_chart(parent_frame, log_target):
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # --- SNAPSHOT dla AI (dokładnie to, co na wykresie) ---
             df_bar = pd.DataFrame({
                 "Genre": labels,
                 "ItemsOwned": values
@@ -874,7 +848,6 @@ def generate_items_by_age_chart(parent_frame, log_target):
             append_log(log_target, "[AgeItems] Brak danych do wyświetlenia.")
             return
 
-        # z góry zdefiniowana kolejność kubełków
         bins_order = ['0-6', '7-10', '11-15', '16-18', '19-25', '26-30', '30+']
         bins = {k: 0 for k in bins_order}
 
@@ -1002,12 +975,10 @@ def generate_purchase_vs_last_session_user_chart(parent_frame, log_target=None):
                 return
 
             df = pd.DataFrame(rows)
-            # — konwersje typów
             df["purchase_date"] = pd.to_datetime(df["purchase_date"], errors="coerce")
             df["last_session"]  = pd.to_datetime(df["last_session"],  errors="coerce")
             df["game_time"]     = pd.to_numeric(df["game_time"], errors="coerce").fillna(0).astype(int)
 
-            # — wykres
             fig, ax = plt.subplots(figsize=(10, 6))
             fig.patch.set_facecolor("#121222")
             ax.set_facecolor("#1A0033")
@@ -1066,7 +1037,6 @@ def generate_purchase_vs_last_session_user_chart(parent_frame, log_target=None):
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # === SNAPSHOT -> bridge (bez żadnych dodatkowych okien) ===
             df_snap = pd.DataFrame({
                 "game_name":    df["game_name"].astype(str),
                 # zapisujemy ISO stringi, żeby LLM nie tłumaczył znaczników daty
@@ -1433,7 +1403,6 @@ def generate_mods_chart(parent_frame, log_target=None):
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # --- Pan/Scroll ---
             pan_start = {"x": None}
 
             def on_mouse_scroll(event):
@@ -1464,7 +1433,6 @@ def generate_mods_chart(parent_frame, log_target=None):
             fig.canvas.mpl_connect("button_release_event", on_release)
             fig.canvas.mpl_connect("motion_notify_event", on_motion)
 
-            # --- SNAPSHOT dla AI (dokładnie to, co na wykresie) ---
             df_bar = pd.DataFrame({
                 "Game": selected_titles,
                 "Mods": selected_mods
@@ -1574,7 +1542,6 @@ def generate_mods_by_genre_chart(parent_frame, log_target=None):
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # --- Pan / Scroll (jak było) ---
             pan_start = {"x": None}
 
             def on_mouse_scroll(event):
@@ -1605,7 +1572,6 @@ def generate_mods_by_genre_chart(parent_frame, log_target=None):
             fig.canvas.mpl_connect("button_release_event", on_release)
             fig.canvas.mpl_connect("motion_notify_event", on_motion)
 
-            # --- SNAPSHOT dla AI (dokładnie to, co na wykresie) ---
             df_bar = pd.DataFrame({
                 "Genre": selected_genres,
                 "Mods": selected_mods
@@ -1650,11 +1616,9 @@ def generate_playtime_vs_achievements_chart(parent_frame, log_box):
         game_dict = {g['game_name']: g['id_game'] for g in games}
         game_titles = list(game_dict.keys())
 
-        # wyczyść panel
         for w in parent_frame.winfo_children():
             w.destroy()
 
-        # lista gier
         listbox = tk.Listbox(
             parent_frame,
             selectmode='browse',
@@ -1670,7 +1634,6 @@ def generate_playtime_vs_achievements_chart(parent_frame, log_box):
             listbox.insert(tk.END, title)
         listbox.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
 
-        # ramka na wykres
         chart_frame = tk.Frame(parent_frame, bg=CHART_FACE)
         chart_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -1692,7 +1655,6 @@ def generate_playtime_vs_achievements_chart(parent_frame, log_box):
                 append_log(log_box, f"[Chart] Brak danych dla gry: {game_name}.")
                 return
 
-            # dane do wykresu
             x = np.array([row['hours_played'] for row in data])              # godziny gry
             y = np.array([row['achievement_progress'] for row in data])      # % osiągnięć
             ach = np.array([row['achievements'] for row in data])            # liczba osiągnięć
@@ -1702,7 +1664,6 @@ def generate_playtime_vs_achievements_chart(parent_frame, log_box):
                 for row in data
             ]
 
-            # wykres
             fig, ax = plt.subplots(figsize=(10, 6))
             fig.patch.set_facecolor(CHART_FACE)
             ax.set_facecolor(CHART_AX_FACE)
@@ -1746,7 +1707,6 @@ def generate_playtime_vs_achievements_chart(parent_frame, log_box):
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-            # === SNAPSHOT dla AI (1:1 z tym co widać) ===
             df_snap = pd.DataFrame({
                 "HoursPlayed": x.astype(float),
                 "AchievementPercent": y.astype(float),
@@ -1770,7 +1730,6 @@ def generate_playtime_vs_achievements_chart(parent_frame, log_box):
 
         listbox.bind('<<ListboxSelect>>', on_select)
 
-        # opcjonalnie automatycznie narysuj pierwszą grę
         if game_titles:
             listbox.selection_set(0)
             draw_chart(game_titles[0])
@@ -1787,20 +1746,17 @@ def main_ui():
     screen_height = root.winfo_screenheight()
     root.geometry(f"{screen_width}x{screen_height}+0+0")
 
-    # ---- wymiary
     w_left = int(screen_width * 0.40)
     w_right = screen_width - w_left
     h_top = int(screen_height * 0.60)     # górny panel (wykresy)
     h_bottom = screen_height - h_top      # dolny panel (info/log)
 
-    # ---- lewy panel (Opcje) na pełną wysokość
     OknoOpcje = tk.Frame(
         root, width=w_left, height=screen_height,
         bg=COLOR_LEFT, highlightbackground=BORDER_COLOR, highlightthickness=BORDER_WIDTH
     )
     OknoOpcje.place(x=0, y=0)
 
-    # wiersze na przyciski w lewym panelu
     h_row = 50
     OknoOpcje_1 = tk.Frame(OknoOpcje, width=w_left, height=h_row, bg=COLOR_LEFT); OknoOpcje_1.place(x=10, y=60)
     OknoOpcje_2 = tk.Frame(OknoOpcje, width=w_left, height=h_row, bg=COLOR_LEFT); OknoOpcje_2.place(x=10, y=60 + h_row)
@@ -1808,26 +1764,21 @@ def main_ui():
     OknoOpcje_4 = tk.Frame(OknoOpcje, width=w_left, height=h_row, bg=COLOR_LEFT); OknoOpcje_4.place(x=10, y=60 + h_row*3)
     OknoOpcje_5 = tk.Frame(OknoOpcje, width=w_left, height=180,  bg=COLOR_LEFT); OknoOpcje_5.place(x=10, y=60 + h_row*4)
 
-    # górne: wykresy
     OknoWykres = tk.Frame(
         root, width=w_right, height=h_top,
         bg=COLOR_RIGHT, highlightbackground=BORDER_COLOR, highlightthickness=BORDER_WIDTH
     )
     OknoWykres.place(x=w_left, y=0)
 
-    # dolne: info
     OknoInfo = tk.Frame(
         root, width=w_right, height=h_bottom,
         bg=COLOR_BOTTOM, highlightbackground=BORDER_COLOR, highlightthickness=BORDER_WIDTH
     )
     OknoInfo.place(x=w_left, y=h_top)
 
-    # ---- status (mały) i log/info tekst
-    # przenosimy status_label do lewego panelu (prawy górny róg)
     status_label = tk.Label(OknoOpcje, text="", bg=COLOR_LEFT, fg="white", font=("Courier New", 11))
     status_label.place(relx=1.0, y=10, x=-10, anchor="ne")
 
-    # Jeden wspólny box na informacje o grze/graczu ORAZ logi
     info_text = tk.Text(
         OknoInfo, wrap="word", bg=COLOR_BOTTOM, fg="white",
         font=("Courier New", 11), borderwidth=0
